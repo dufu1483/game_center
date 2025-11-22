@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Arcade</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="menu-container">
+        <h1 class="menu-title">NEON ARCADE</h1>
+
+        <div class="menu-grid">
+            <a href="games/hockey.html" class="game-card">
+                <div class="icon">🏒</div>
+                <h2>TABLE HOCKEY</h2>
+                <p>Classic Air Hockey Action</p>
+            </a>
+            <a href="games/brick_breaker.html" class="game-card">
+                <div class="icon">🧱</div>
+                <h2>BRICK BREAKER</h2>
+                <p>Destroy Neon Bricks</p>
+            </a>
+        </div>
+
+        <div class="theme-selector">
+            <div class="theme-btn" style="background: linear-gradient(45deg, #00f3ff, #ff00ff);"
+                onclick="setTheme('cyan-pink')"></div>
+            <div class="theme-btn" style="background: linear-gradient(45deg, #00ff00, #bf00ff);"
+                onclick="setTheme('green-purple')"></div>
+            <div class="theme-btn" style="background: linear-gradient(45deg, #ff9900, #0088ff);"
+                onclick="setTheme('orange-blue')"></div>
+            <div class="theme-btn" style="background: linear-gradient(45deg, #ff0000, #ffff00);"
+                onclick="setTheme('red-yellow')"></div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Management
+        function setTheme(themeName) {
+            const root = document.documentElement;
+            let primary, secondary, accent;
+
+            switch (themeName) {
+                case 'green-purple':
+                    primary = '#00ff00';
+                    secondary = '#bf00ff';
+                    accent = '#ffff00';
+                    break;
+                case 'orange-blue':
+                    primary = '#ff9900';
+                    secondary = '#0088ff';
+                    accent = '#ffffff';
+                    break;
+                case 'red-yellow':
+                    primary = '#ff0000';
+                    secondary = '#ffff00';
+                    accent = '#00ffff';
+                    break;
+                case 'cyan-pink':
+                default:
+                    primary = '#00f3ff';
+                    secondary = '#ff00ff';
+                    accent = '#00ff00';
+                    break;
+            }
+
+            root.style.setProperty('--neon-primary', primary);
+            root.style.setProperty('--neon-secondary', secondary);
+            root.style.setProperty('--neon-accent', accent);
+
+            // Update legacy vars for compatibility
+            root.style.setProperty('--neon-blue', primary);
+            root.style.setProperty('--neon-pink', secondary);
+            root.style.setProperty('--neon-green', accent);
+
+            localStorage.setItem('neon-theme', themeName);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('neon-theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+    </script>
+</body>
+
+</html>

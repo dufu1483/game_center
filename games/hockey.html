@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Table Hockey</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="ui-layer">
+            <div class="score-board">
+                <div class="player-score" id="playerScore">0</div>
+                <div class="divider">:</div>
+                <div class="ai-score" id="aiScore">0</div>
+            </div>
+            <div id="startScreen" class="overlay active">
+                <h1 class="title">NEON HOCKEY</h1>
+                <button id="startBtn" class="neon-btn">START GAME</button>
+                <p class="instructions">Drag to move. First to 7 wins.</p>
+            </div>
+            <div id="gameOverScreen" class="overlay">
+                <h2 id="winnerText">PLAYER WINS!</h2>
+                <button id="restartBtn" class="neon-btn">PLAY AGAIN</button>
+                <button id="menuBtn" class="neon-btn secondary" onclick="window.location.href='../index.html'">MAIN
+                    MENU</button>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <a href="../index.html" class="back-btn">← MENU</a>
+    </div>
+    <script src="../js/hockey.js"></script>
+</body>
+
+</html>
