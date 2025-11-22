@@ -17,7 +17,7 @@ const PUCK_RADIUS = 15;
 const PADDLE_RADIUS = 25;
 const GOAL_SIZE = 120;
 const MAX_SCORE = 7;
-const FRICTION = 0.99;
+const FRICTION_FACTOR = 0.5; // Retains 0.5 speed per second (approx 0.99 per frame at 60fps)
 const PADDLE_MASS = 10;
 const PUCK_MASS = 1;
 
@@ -35,6 +35,7 @@ const COLORS = {
 let gameRunning = false;
 let playerScore = 0;
 let aiScore = 0;
+let lastTime = 0;
 
 // Entities
 const puck = {
@@ -43,8 +44,7 @@ const puck = {
     vx: 0,
     vy: 0,
     radius: PUCK_RADIUS,
-    speed: 0,
-    maxSpeed: 15
+    maxSpeed: 1000 // Pixels per second
 };
 
 const player = {
@@ -66,7 +66,7 @@ const ai = {
     vy: 0,
     radius: PADDLE_RADIUS,
     color: COLORS.ai,
-    speed: 5, // Increased base speed
+    speed: 350, // Pixels per second
     reactionDelay: 0.1
 };
 
@@ -144,68 +144,64 @@ function checkCollision(c1, c2) {
     return distance < c1.radius + c2.radius;
 }
 
-function resolveCollision(puck, paddle) {
+// We need to rewrite resolveCollision to accept paddle velocity
+function resolveCollisionWithVelocity(puck, paddle, paddleVx, paddleVy) {
     const dx = puck.x - paddle.x;
     const dy = puck.y - paddle.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance === 0) return; // Prevent divide by zero
+    if (distance === 0) return;
 
-    // Normal vector (from paddle to puck)
     const nx = dx / distance;
     const ny = dy / distance;
 
-    // Move puck out of collision (position correction)
     const overlap = (puck.radius + paddle.radius) - distance;
     puck.x += nx * overlap;
     puck.y += ny * overlap;
 
-    // Calculate relative velocity
-    // Paddle velocity is estimated from this frame's movement
-    const paddleVx = paddle.x - paddle.lastX;
-    const paddleVy = paddle.y - paddle.lastY;
-
     const dvx = puck.vx - paddleVx;
     const dvy = puck.vy - paddleVy;
 
-    // Calculate relative velocity in terms of the normal direction
     const velAlongNormal = dvx * nx + dvy * ny;
 
-    // Do not resolve if velocities are separating
     if (velAlongNormal > 0) return;
 
-    // Calculate restitution (bounciness)
-    const restitution = 1.2; // Slightly > 1 for energetic hits
-
-    // Calculate impulse scalar
+    const restitution = 1.2;
     let j = -(1 + restitution) * velAlongNormal;
 
-    // Apply impulse
     puck.vx += j * nx;
     puck.vy += j * ny;
 
-    // Cap speed
+    // Min speed boost on hit
     const currentSpeed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy);
-    if (currentSpeed > puck.maxSpeed) {
-        const scale = puck.maxSpeed / currentSpeed;
+    if (currentSpeed < 300) {
+        puck.vx += nx * 100;
+        puck.vy += ny * 100;
+    }
+
+    // Cap speed
+    const newSpeed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy);
+    if (newSpeed > puck.maxSpeed) {
+        const scale = puck.maxSpeed / newSpeed;
         puck.vx *= scale;
         puck.vy *= scale;
     }
 }
 
-function update() {
+function update(dt) {
     if (!gameRunning) return;
 
     // Puck Physics
-    puck.x += puck.vx;
-    puck.y += puck.vy;
+    puck.x += puck.vx * dt;
+    puck.y += puck.vy * dt;
 
-    // Friction
-    puck.vx *= FRICTION;
-    puck.vy *= FRICTION;
+    // Friction (Exponential decay)
+    // velocity = velocity * pow(friction, dt)
+    const friction = Math.pow(FRICTION_FACTOR, dt);
+    puck.vx *= friction;
+    puck.vy *= friction;
 
     // Wall Collisions
-    // Top/Bottom
     if (puck.y - puck.radius < 0) {
         puck.y = puck.radius;
         puck.vy = -puck.vy;
@@ -214,10 +210,9 @@ function update() {
         puck.vy = -puck.vy;
     }
 
-    // Left/Right (Goal check)
+    // Goals
     if (puck.x - puck.radius < 0) {
         if (puck.y > canvas.height / 2 - GOAL_SIZE / 2 && puck.y < canvas.height / 2 + GOAL_SIZE / 2) {
-            // AI Scored
             aiScore++;
             aiScoreEl.textContent = aiScore;
             checkWin();
@@ -229,7 +224,6 @@ function update() {
         }
     } else if (puck.x + puck.radius > canvas.width) {
         if (puck.y > canvas.height / 2 - GOAL_SIZE / 2 && puck.y < canvas.height / 2 + GOAL_SIZE / 2) {
-            // Player Scored
             playerScore++;
             playerScoreEl.textContent = playerScore;
             checkWin();
@@ -241,16 +235,24 @@ function update() {
         }
     }
 
+    // Calculate Paddle Velocities (px/s)
+    // Avoid dividing by zero if dt is very small
+    const safeDt = dt > 0.001 ? dt : 0.016;
+    const playerVx = (player.x - player.lastX) / safeDt;
+    const playerVy = (player.y - player.lastY) / safeDt;
+
+    const aiVx = (ai.x - ai.lastX) / safeDt;
+    const aiVy = (ai.y - ai.lastY) / safeDt;
+
     // Paddle Collisions
     if (checkCollision(puck, player)) {
-        resolveCollision(puck, player);
+        resolveCollisionWithVelocity(puck, player, playerVx, playerVy);
     }
     if (checkCollision(puck, ai)) {
-        resolveCollision(puck, ai);
+        resolveCollisionWithVelocity(puck, ai, aiVx, aiVy);
     }
 
     // AI Logic
-    // Save last position before moving
     ai.lastX = ai.x;
     ai.lastY = ai.y;
 
@@ -258,40 +260,33 @@ function update() {
     const aiTargetX = canvas.width * 0.9;
     const dy = aiTargetY - ai.y;
 
-    // Improved AI Movement Logic
-    let moveSpeed = ai.speed;
+    let moveSpeed = ai.speed * dt;
 
-    // If puck is on AI side
     if (puck.x > canvas.width / 2) {
-        // Move vertically towards puck
         if (Math.abs(dy) > 5) {
-            ai.y += Math.sign(dy) * moveSpeed;
+            ai.y += Math.sign(dy) * Math.min(Math.abs(dy), ai.speed * dt);
         }
 
-        // Attack logic
-        // If puck is in front of AI and close, strike it
         if (puck.x < ai.x && puck.x > canvas.width * 0.6) {
-            // Move forward to hit
-            ai.x -= moveSpeed * 1.2;
+            ai.x -= ai.speed * 1.2 * dt;
         } else {
-            // Retreat to home X
-            if (ai.x < aiTargetX) ai.x += moveSpeed;
-            if (ai.x > aiTargetX) ai.x -= moveSpeed;
+            if (ai.x < aiTargetX) ai.x += ai.speed * dt;
+            if (ai.x > aiTargetX) ai.x -= ai.speed * dt;
         }
     } else {
-        // Puck on player side - track Y but stay defensive
         if (Math.abs(dy) > 10) {
-            ai.y += Math.sign(dy) * (moveSpeed * 0.8);
+            ai.y += Math.sign(dy) * Math.min(Math.abs(dy), ai.speed * 0.6 * dt);
         }
-
-        // Return to home X
-        if (ai.x < aiTargetX) ai.x += moveSpeed;
-        if (ai.x > aiTargetX) ai.x -= moveSpeed;
+        if (ai.x < aiTargetX) ai.x += ai.speed * dt;
+        if (ai.x > aiTargetX) ai.x -= ai.speed * dt;
     }
 
-    // Constrain AI
     ai.y = Math.max(ai.radius, Math.min(ai.y, canvas.height - ai.radius));
     ai.x = Math.max(canvas.width / 2 + ai.radius, Math.min(ai.x, canvas.width - ai.radius));
+
+    // Update Player Last Pos
+    player.lastX = player.x;
+    player.lastY = player.y;
 }
 
 function checkWin() {
@@ -358,15 +353,13 @@ function draw() {
     ctx.shadowBlur = 0;
 }
 
-function loop() {
-    update();
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000; // Convert to seconds
+    lastTime = timestamp;
+
+    update(dt);
     draw();
-
-    // Update last positions for velocity calculation in next frame
-    player.lastX = player.x;
-    player.lastY = player.y;
-    // AI lastX/Y is updated inside update() before it moves
-
     requestAnimationFrame(loop);
 }
 
@@ -375,6 +368,7 @@ startBtn.addEventListener('click', () => {
     startScreen.classList.remove('active');
     gameRunning = true;
     resetPositions();
+    lastTime = performance.now(); // Reset lastTime for accurate dt calculation
 });
 
 // Restart Game
@@ -386,8 +380,9 @@ restartBtn.addEventListener('click', () => {
     aiScoreEl.textContent = '0';
     gameRunning = true;
     resetPositions();
+    lastTime = performance.now(); // Reset lastTime for accurate dt calculation
 });
 
 // Init
 resetPositions();
-loop();
+requestAnimationFrame(loop);

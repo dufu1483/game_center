@@ -18,6 +18,8 @@ const BRICK_COLUMN_COUNT = 8;
 const BRICK_PADDING = 10;
 const BRICK_OFFSET_TOP = 50;
 const BRICK_OFFSET_LEFT = 35;
+const BASE_SPEED = 300; // Pixels per second
+const MAX_SPEED = 800;
 
 // Colors (will be updated by CSS vars)
 let COLORS = {
@@ -30,6 +32,7 @@ let COLORS = {
 let gameRunning = false;
 let score = 0;
 let lives = 3;
+let lastTime = 0;
 
 // Entities
 const paddle = {
@@ -43,10 +46,10 @@ const paddle = {
 const ball = {
     x: canvas.width / 2,
     y: canvas.height - 40,
-    dx: 4,
-    dy: -4,
+    dx: 0,
+    dy: 0,
     radius: BALL_RADIUS,
-    speed: 5
+    speed: BASE_SPEED
 };
 
 const bricks = [];
@@ -121,8 +124,19 @@ canvas.addEventListener('touchmove', (e) => {
 function resetBall() {
     ball.x = canvas.width / 2;
     ball.y = canvas.height - 40;
-    ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
-    ball.dy = -4;
+    ball.speed = BASE_SPEED;
+
+    // Randomize start direction slightly
+    const angle = (Math.random() * 45 + 45) * (Math.PI / 180); // 45-90 degrees
+    const dirX = Math.random() > 0.5 ? 1 : -1;
+
+    // Normalize velocity vector
+    // We want initial dy to be negative (up)
+    // Let's just set dx/dy based on speed
+    // Initial launch: Up and slightly sideways
+    ball.dx = ball.speed * Math.cos(angle) * dirX; // ~0.707 * speed
+    ball.dy = -ball.speed * Math.sin(angle); // ~0.707 * speed
+
     paddle.x = canvas.width / 2 - paddle.width / 2;
 }
 
@@ -137,6 +151,9 @@ function collisionDetection() {
                     score++;
                     scoreEl.textContent = score;
 
+                    // Increase Speed
+                    increaseSpeed();
+
                     // Check Win
                     if (score === BRICK_ROW_COUNT * BRICK_COLUMN_COUNT) {
                         gameOver(true);
@@ -147,32 +164,71 @@ function collisionDetection() {
     }
 }
 
-function update() {
+function increaseSpeed() {
+    // Increase speed by 2% per brick, cap at MAX_SPEED
+    ball.speed = Math.min(ball.speed * 1.02, MAX_SPEED);
+
+    // Re-normalize velocity vector to new speed
+    const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+    if (currentSpeed > 0) {
+        ball.dx = (ball.dx / currentSpeed) * ball.speed;
+        ball.dy = (ball.dy / currentSpeed) * ball.speed;
+    }
+}
+
+function update(dt) {
     if (!gameRunning) return;
 
     // Move Ball
-    ball.x += ball.dx;
-    ball.y += ball.dy;
+    ball.x += ball.dx * dt;
+    ball.y += ball.dy * dt;
 
     // Wall Collision
-    if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
         ball.dx = -ball.dx;
+        // Push out of wall
+        if (ball.x + ball.radius > canvas.width) ball.x = canvas.width - ball.radius;
+        if (ball.x - ball.radius < 0) ball.x = ball.radius;
     }
-    if (ball.y + ball.dy < ball.radius) {
+
+    if (ball.y - ball.radius < 0) {
         ball.dy = -ball.dy;
-    } else if (ball.y + ball.dy > canvas.height - ball.radius) {
+        ball.y = ball.radius;
+    } else if (ball.y - ball.radius > canvas.height) {
         // Ball lost
         gameOver(false);
     }
 
     // Paddle Collision
-    if (ball.y + ball.dy > canvas.height - ball.radius - paddle.height - 10) {
-        if (ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
-            // Hit paddle
+    // Simple AABB for paddle
+    if (ball.y + ball.radius > paddle.y &&
+        ball.y - ball.radius < paddle.y + paddle.height &&
+        ball.x + ball.radius > paddle.x &&
+        ball.x - ball.radius < paddle.x + paddle.width) {
+
+        // Only bounce if moving down
+        if (ball.dy > 0) {
             ball.dy = -ball.dy;
-            // Add some English based on where it hit
+
+            // Add "English" based on hit position
             const hitPoint = ball.x - (paddle.x + paddle.width / 2);
-            ball.dx = hitPoint * 0.15;
+            // Normalize hit point (-1 to 1)
+            const normalizedHit = hitPoint / (paddle.width / 2);
+
+            // Adjust dx based on hit point
+            // Max angle change ~45 degrees
+            const currentSpeed = ball.speed;
+            ball.dx = normalizedHit * (currentSpeed * 0.8);
+
+            // Re-normalize to maintain constant speed
+            // We want to ensure dy is negative (up)
+            // speed^2 = dx^2 + dy^2  =>  dy = -sqrt(speed^2 - dx^2)
+            // Clamp dx so we don't get NaN
+            if (Math.abs(ball.dx) > currentSpeed * 0.9) {
+                ball.dx = Math.sign(ball.dx) * currentSpeed * 0.9;
+            }
+
+            ball.dy = -Math.sqrt(currentSpeed * currentSpeed - ball.dx * ball.dx);
         }
     }
 
@@ -238,8 +294,12 @@ function draw() {
     ctx.shadowBlur = 0;
 }
 
-function loop() {
-    update();
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    update(dt);
     draw();
     requestAnimationFrame(loop);
 }
@@ -252,6 +312,7 @@ startBtn.addEventListener('click', () => {
     scoreEl.textContent = '0';
     initBricks();
     resetBall();
+    lastTime = performance.now();
 });
 
 // Restart Game
@@ -262,8 +323,9 @@ restartBtn.addEventListener('click', () => {
     scoreEl.textContent = '0';
     initBricks();
     resetBall();
+    lastTime = performance.now();
 });
 
 // Init
 resizeCanvas();
-loop();
+requestAnimationFrame(loop);
