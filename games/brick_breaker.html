@@ -13,6 +13,7 @@
     <div class="game-container">
         <div class="ui-layer">
             <div class="score-board">
+                <div class="lives" id="lives">❤️❤️❤️</div>
                 <div class="player-score" id="score">0</div>
             </div>
             <div id="startScreen" class="overlay active">
@@ -25,6 +26,12 @@
                 <button id="restartBtn" class="neon-btn">TRY AGAIN</button>
                 <button id="menuBtn" class="neon-btn secondary" onclick="window.location.href='../index.html'">MAIN
                     MENU</button>
+            </div>
+            <div id="pauseScreen" class="overlay">
+                <h2 class="pause-title">PAUSED</h2>
+                <button id="resumeBtn" class="neon-btn">RESUME</button>
+                <button id="pauseMenuBtn" class="neon-btn secondary" onclick="window.location.href='../index.html'">MAIN MENU</button>
+                <p class="instructions">Press ESC to resume</p>
             </div>
         </div>
         <canvas id="gameCanvas"></canvas>

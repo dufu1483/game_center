@@ -28,11 +28,37 @@
                 <button id="menuBtn" class="neon-btn secondary" onclick="window.location.href='../index.html'">MAIN
                     MENU</button>
             </div>
+            <div id="pauseScreen" class="overlay">
+                <h2 class="pause-title">PAUSED</h2>
+                <button id="resumeBtn" class="neon-btn">RESUME</button>
+                <button id="pauseMenuBtn" class="neon-btn secondary" onclick="window.location.href='../index.html'">MAIN MENU</button>
+                <p class="instructions">Press ESC to resume</p>
+            </div>
         </div>
         <canvas id="gameCanvas"></canvas>
         <a href="../index.html" class="back-btn">← MENU</a>
     </div>
     <script src="../js/hockey.js"></script>
+    <script>
+        // Apply theme on load
+        const savedTheme = localStorage.getItem('neon-theme');
+        if (savedTheme) {
+            const root = document.documentElement;
+            let primary, secondary, accent;
+            switch (savedTheme) {
+                case 'green-purple': primary = '#00ff00'; secondary = '#bf00ff'; accent = '#ffff00'; break;
+                case 'orange-blue': primary = '#ff9900'; secondary = '#0088ff'; accent = '#ffffff'; break;
+                case 'red-yellow': primary = '#ff0000'; secondary = '#ffff00'; accent = '#00ffff'; break;
+                default: primary = '#00f3ff'; secondary = '#ff00ff'; accent = '#00ff00'; break;
+            }
+            root.style.setProperty('--neon-primary', primary);
+            root.style.setProperty('--neon-secondary', secondary);
+            root.style.setProperty('--neon-accent', accent);
+            root.style.setProperty('--neon-blue', primary);
+            root.style.setProperty('--neon-pink', secondary);
+            root.style.setProperty('--neon-green', accent);
+        }
+    </script>
 </body>
 
 </html>

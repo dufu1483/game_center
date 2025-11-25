@@ -21,18 +21,24 @@ const FRICTION_FACTOR = 0.5; // Retains 0.5 speed per second (approx 0.99 per fr
 const PADDLE_MASS = 10;
 const PUCK_MASS = 1;
 
-// Colors
-const COLORS = {
-    board: '#151520',
-    lines: '#2a2a35',
-    player: '#00f3ff',
-    ai: '#ff00ff',
-    puck: '#ffffff',
-    glow: 'rgba(255, 255, 255, 0.5)'
-};
+// Colors - Dynamic from CSS variables
+function getThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    return {
+        board: '#151520',
+        lines: '#2a2a35',
+        player: style.getPropertyValue('--neon-primary').trim() || '#00f3ff',
+        ai: style.getPropertyValue('--neon-secondary').trim() || '#ff00ff',
+        puck: '#ffffff',
+        glow: 'rgba(255, 255, 255, 0.5)'
+    };
+}
+
+let COLORS = getThemeColors();
 
 // Game State
 let gameRunning = false;
+let isPaused = false;
 let playerScore = 0;
 let aiScore = 0;
 let lastTime = 0;
@@ -189,7 +195,7 @@ function resolveCollisionWithVelocity(puck, paddle, paddleVx, paddleVy) {
 }
 
 function update(dt) {
-    if (!gameRunning) return;
+    if (!gameRunning || isPaused) return;
 
     // Puck Physics
     puck.x += puck.vx * dt;
@@ -299,6 +305,9 @@ function checkWin() {
 }
 
 function draw() {
+    // Update colors from CSS vars (in case theme changed)
+    COLORS = getThemeColors();
+
     // Clear
     ctx.fillStyle = COLORS.board;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -363,10 +372,33 @@ function loop(timestamp) {
     requestAnimationFrame(loop);
 }
 
+// Pause functionality
+const pauseScreen = document.getElementById('pauseScreen');
+const resumeBtn = document.getElementById('resumeBtn');
+
+function togglePause() {
+    if (!gameRunning) return;
+
+    isPaused = !isPaused;
+    if (isPaused) {
+        pauseScreen.classList.add('active');
+    } else {
+        pauseScreen.classList.remove('active');
+        lastTime = performance.now();
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        togglePause();
+    }
+});
+
 // Start Game
 startBtn.addEventListener('click', () => {
     startScreen.classList.remove('active');
     gameRunning = true;
+    isPaused = false;
     resetPositions();
     lastTime = performance.now(); // Reset lastTime for accurate dt calculation
 });
@@ -379,9 +411,17 @@ restartBtn.addEventListener('click', () => {
     playerScoreEl.textContent = '0';
     aiScoreEl.textContent = '0';
     gameRunning = true;
+    isPaused = false;
     resetPositions();
     lastTime = performance.now(); // Reset lastTime for accurate dt calculation
 });
+
+// Resume Game
+if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+        togglePause();
+    });
+}
 
 // Init
 resetPositions();

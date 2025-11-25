@@ -4,9 +4,12 @@ const ctx = canvas.getContext('2d');
 // UI Elements
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
+const pauseScreen = document.getElementById('pauseScreen');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
+const resumeBtn = document.getElementById('resumeBtn');
 const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
 const winnerText = document.getElementById('winnerText');
 
 // Game Constants
@@ -30,8 +33,10 @@ let COLORS = {
 
 // Game State
 let gameRunning = false;
+let isPaused = false;
 let score = 0;
 let lives = 3;
+let highScore = parseInt(localStorage.getItem('brickBreaker_highScore')) || 0;
 let lastTime = 0;
 
 // Entities
@@ -177,7 +182,7 @@ function increaseSpeed() {
 }
 
 function update(dt) {
-    if (!gameRunning) return;
+    if (!gameRunning || isPaused) return;
 
     // Move Ball
     ball.x += ball.dx * dt;
@@ -195,8 +200,16 @@ function update(dt) {
         ball.dy = -ball.dy;
         ball.y = ball.radius;
     } else if (ball.y - ball.radius > canvas.height) {
-        // Ball lost
-        gameOver(false);
+        // Ball lost - deduct life
+        lives--;
+        updateLivesDisplay();
+
+        if (lives <= 0) {
+            gameOver(false);
+        } else {
+            resetBall();
+        }
+        return;
     }
 
     // Paddle Collision
@@ -237,6 +250,13 @@ function update(dt) {
 
 function gameOver(win) {
     gameRunning = false;
+
+    // Update high score
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('brickBreaker_highScore', highScore);
+    }
+
     winnerText.textContent = win ? "YOU WIN!" : "GAME OVER";
     winnerText.style.color = win ? COLORS.paddle : '#ff0000';
     gameOverScreen.classList.add('active');
@@ -304,12 +324,89 @@ function loop(timestamp) {
     requestAnimationFrame(loop);
 }
 
+// Update lives display
+function updateLivesDisplay() {
+    if (livesEl) {
+        livesEl.textContent = '❤️'.repeat(lives);
+    }
+}
+
+// Toggle Pause
+function togglePause() {
+    if (!gameRunning) return;
+
+    isPaused = !isPaused;
+    if (isPaused) {
+        pauseScreen.classList.add('active');
+    } else {
+        pauseScreen.classList.remove('active');
+        lastTime = performance.now();
+    }
+}
+
+// Keyboard Controls
+const keys = {
+    left: false,
+    right: false
+};
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        togglePause();
+        return;
+    }
+
+    if (!gameRunning || isPaused) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        keys.left = true;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        keys.right = true;
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        keys.left = false;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        keys.right = false;
+    }
+});
+
+// Update paddle position based on keyboard
+function updatePaddleKeyboard(dt) {
+    const PADDLE_SPEED = 500; // pixels per second
+
+    if (keys.left) {
+        paddle.x -= PADDLE_SPEED * dt;
+        if (paddle.x < 0) paddle.x = 0;
+    }
+    if (keys.right) {
+        paddle.x += PADDLE_SPEED * dt;
+        if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+    }
+}
+
+// Modify update to include keyboard paddle control
+const originalUpdate = update;
+update = function (dt) {
+    if (gameRunning && !isPaused) {
+        updatePaddleKeyboard(dt);
+    }
+    originalUpdate(dt);
+};
+
 // Start Game
 startBtn.addEventListener('click', () => {
     startScreen.classList.remove('active');
     gameRunning = true;
+    isPaused = false;
     score = 0;
+    lives = 3;
     scoreEl.textContent = '0';
+    updateLivesDisplay();
     initBricks();
     resetBall();
     lastTime = performance.now();
@@ -319,13 +416,24 @@ startBtn.addEventListener('click', () => {
 restartBtn.addEventListener('click', () => {
     gameOverScreen.classList.remove('active');
     gameRunning = true;
+    isPaused = false;
     score = 0;
+    lives = 3;
     scoreEl.textContent = '0';
+    updateLivesDisplay();
     initBricks();
     resetBall();
     lastTime = performance.now();
 });
 
+// Resume Game
+if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+        togglePause();
+    });
+}
+
 // Init
 resizeCanvas();
+updateLivesDisplay();
 requestAnimationFrame(loop);

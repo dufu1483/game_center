@@ -143,6 +143,37 @@ body {
     box-shadow: 0 0 20px var(--neon-secondary), 0 0 40px var(--neon-secondary);
 }
 
+/* Lives Display */
+.lives {
+    font-size: 1.5rem;
+    margin-right: 20px;
+    letter-spacing: 5px;
+}
+
+/* Pause Title */
+.pause-title {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    color: var(--neon-accent);
+    text-shadow: 0 0 20px var(--neon-accent);
+}
+
+/* Focus styles for accessibility */
+.neon-btn:focus-visible,
+.theme-btn:focus-visible,
+.game-card:focus-visible {
+    outline: 2px solid var(--neon-primary);
+    outline-offset: 3px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 @keyframes pulse {
     0% {
         text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
