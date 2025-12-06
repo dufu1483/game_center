@@ -186,6 +186,9 @@ function increaseSpeed() {
 function update(dt) {
     if (!gameRunning || isPaused) return;
 
+    // Keyboard paddle control
+    updatePaddleKeyboard(dt);
+
     // Move Ball
     ball.x += ball.dx * dt;
     ball.y += ball.dy * dt;
@@ -391,14 +394,7 @@ function updatePaddleKeyboard(dt) {
     }
 }
 
-// Modify update to include keyboard paddle control
-const originalUpdate = update;
-update = function (dt) {
-    if (gameRunning && !isPaused) {
-        updatePaddleKeyboard(dt);
-    }
-    originalUpdate(dt);
-};
+
 
 // Start Game - Shared initialization function
 function startGame() {
