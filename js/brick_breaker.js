@@ -150,7 +150,9 @@ function collisionDetection() {
         for (let r = 0; r < BRICK_ROW_COUNT; r++) {
             const b = bricks[c][r];
             if (b.status === 1) {
-                if (ball.x > b.x && ball.x < b.x + b.width && ball.y > b.y && ball.y < b.y + b.height) {
+                // Consider ball radius for accurate collision detection
+                if (ball.x + ball.radius > b.x && ball.x - ball.radius < b.x + b.width &&
+                    ball.y + ball.radius > b.y && ball.y - ball.radius < b.y + b.height) {
                     ball.dy = -ball.dy;
                     b.status = 0;
                     score++;
