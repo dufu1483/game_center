@@ -398,22 +398,9 @@ update = function (dt) {
     originalUpdate(dt);
 };
 
-// Start Game
-startBtn.addEventListener('click', () => {
+// Start Game - Shared initialization function
+function startGame() {
     startScreen.classList.remove('active');
-    gameRunning = true;
-    isPaused = false;
-    score = 0;
-    lives = 3;
-    scoreEl.textContent = '0';
-    updateLivesDisplay();
-    initBricks();
-    resetBall();
-    lastTime = performance.now();
-});
-
-// Restart Game
-restartBtn.addEventListener('click', () => {
     gameOverScreen.classList.remove('active');
     gameRunning = true;
     isPaused = false;
@@ -424,7 +411,10 @@ restartBtn.addEventListener('click', () => {
     initBricks();
     resetBall();
     lastTime = performance.now();
-});
+}
+
+startBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', startGame);
 
 // Resume Game
 if (resumeBtn) {
